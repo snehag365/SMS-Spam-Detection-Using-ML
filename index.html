@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SMS Spam Detector</title>
+    
+    <!-- Import Professional Font (Lato) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700&display=swap" rel="stylesheet">
+
+    <style>
+        /* CSS STYLING */
+        body {
+            font-family: 'Lato', sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            color: #333333;
+            display: grid;
+            place-items: center;
+            min-height: 100vh;
+            margin: 0;
+            overflow: hidden;
+        }
+
+        .shield-container {
+            text-align: center;
+            animation: shield-intro 1.5s ease-out forwards;
+        }
+
+        .shield-icon {
+            width: 100px;
+            height: 100px;
+            fill: #007bff;
+        }
+
+        .shield-title {
+            font-size: 2.2rem;
+            font-weight: 700;
+            background: linear-gradient(90deg, #007bff, #0056b3);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-top: 0.5rem;
+        }
+
+        .detector-container {
+            background: #ffffff;
+            padding: 2.5rem;
+            border-radius: 16px;
+            box-shadow: 0 15px 35px rgba(47, 85, 114, 0.12);
+            width: 400px;
+            text-align: center;
+            opacity: 0;
+            border: 1px solid #ffffff;
+        }
+
+        .detector-container h2 {
+            margin-top: 0;
+            font-weight: 700;
+            background: linear-gradient(90deg, #007bff, #0056b3);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        textarea {
+            width: 100%;
+            min-height: 120px;
+            border: 2px solid #dde1e0;
+            border-radius: 8px;
+            padding: 1rem;
+            font-family: 'Lato', sans-serif;
+            font-size: 1rem;
+            box-sizing: border-box;
+            margin-bottom: 1.5rem;
+            resize: vertical;
+            transition: border-color 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: #007bff;
+            box-shadow: 0 0 0 4px rgba(0, 123, 255, 0.15);
+        }
+
+        button {
+            width: 100%;
+            padding: 0.85rem;
+            font-size: 1.1rem;
+            font-weight: 700;
+            background: linear-gradient(90deg, #007bff 0%, #0056b3 100%);
+            color: #ffffff;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            box-shadow: 0 5px 15px rgba(0, 123, 255, 0.2);
+            transition: all 0.3s ease;
+        }
+
+        button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(0, 123, 255, 0.3);
+        }
+
+        #result {
+            margin-top: 1.5rem;
+            font-size: 1.2rem;
+            font-weight: 700;
+        }
+
+        .ham { color: #28a745; }
+        .spam { color: #d9534f; }
+
+        /* ANIMATIONS */
+        @keyframes shield-intro {
+            0% { opacity: 0; transform: scale(0.5) rotate(-30deg); }
+            70% { opacity: 1; transform: scale(1.1) rotate(10deg); }
+            100% { opacity: 1; transform: scale(1) rotate(0deg); }
+        }
+
+        .fade-out { animation: fade-out 0.5s ease-in forwards; }
+        @keyframes fade-out { from { opacity: 1; scale: 1; } to { opacity: 0; scale: 0.7; } }
+
+        .fade-in { animation: fade-in 0.5s ease-out forwards; }
+        @keyframes fade-in { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body>
+
+    <!-- Shield Intro -->
+    <div class="shield-container" id="shield-container">
+        <svg class="shield-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z"/>
+        </svg>
+        <h1 class="shield-title">Spam Shield</h1>
+    </div>
+
+    <!-- Main Application -->
+    <div class="detector-container" id="detector-box" style="display: none;">
+        <h2>SMS Spam Detector</h2>
+        <textarea id="message-input" placeholder="Enter your message here..."></textarea>
+        <button id="detect-button">Detect</button>
+        <div id="result"></div>
+    </div>
+
+    <script>
+        const shield = document.getElementById('shield-container');
+        const detectorBox = document.getElementById('detector-box');
+        const detectButton = document.getElementById('detect-button');
+        const messageInput = document.getElementById('message-input');
+        const resultDiv = document.getElementById('result');
+        const API_URL = 'http://127.0.0.1:5000/predict';
+
+        // Intro Animation Sequence
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                shield.classList.add('fade-out');
+                shield.addEventListener('animationend', () => {
+                    shield.style.display = 'none';
+                    detectorBox.style.display = 'block';
+                    detectorBox.classList.add('fade-in');
+                });
+            }, 2000);
+        });
+
+        // Backend Connection Logic
+        detectButton.addEventListener('click', () => {
+            const message = messageInput.value;
+            if (message.trim() === '') return;
+
+            resultDiv.textContent = 'Detecting...';
+            detectButton.disabled = true;
+
+            fetch(API_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message: message })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.result === 'spam') {
+                    resultDiv.textContent = 'Result: SPAM';
+                    resultDiv.className = 'spam';
+                } else {
+                    resultDiv.textContent = 'Result: HAM (Not Spam)';
+                    resultDiv.className = 'ham';
+                }
+            })
+            .catch(error => {
+                resultDiv.textContent = 'Error connecting to server.';
+            })
+            .finally(() => {
+                detectButton.disabled = false;
+            });
+        });
+    </script>
+</body>
+</html>
